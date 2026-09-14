@@ -14,6 +14,10 @@ Run **Nous Research Hermes Agent** in Docker on macOS, Linux, or Windows with pe
 > docker exec hermes hermes auth reset openrouter
 > ```
 > Prompt the user to add their OpenRouter API key (`OPENROUTER_API_KEY`) to `.env`.
+> Prompt the user to configure messaging platforms (Telegram, Discord, WhatsApp, etc.) via:
+> ```bash
+> docker exec -it hermes hermes gateway setup
+> ```
 
 ---
 
@@ -53,6 +57,7 @@ docker compose up -d
 | **Pick Model Interactively** | `docker exec -it hermes hermes model` |
 | **Reset Provider / Rate Limits**| `docker exec hermes hermes auth reset openrouter` |
 | **Reload .env / New API Key**| `docker compose up -d && docker exec hermes hermes auth reset openrouter` |
+| **Configure Messaging (Telegram, etc.)** | `docker exec -it hermes hermes gateway setup` |
 | **View Live Logs** | `docker compose logs -f` |
 | **Restart Container** | `docker compose restart` |
 | **Stop Container** | `docker compose down` |
