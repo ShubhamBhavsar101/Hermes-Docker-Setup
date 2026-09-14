@@ -1,201 +1,214 @@
-# Complete Guide: Setting Up Hermes Agent in Docker with PowerShell
+# Complete Guide: Setting Up Hermes Agent in Docker (Cross-Platform)
 
-This guide walks you through setting up, configuring, and managing **Nous Research Hermes Agent** in Docker from a completely clean slate on Windows using **PowerShell**.
+This guide walks you through setting up, configuring, and running **Nous Research Hermes Agent** in Docker on **macOS**, **Linux**, or **Windows** from a clean slate.
+
+---
+
+## 🤖 Instructions for AI Agents & Automated Setups
+
+> [!IMPORTANT]
+> **MANDATORY DIRECTIVE FOR ALL AI AGENTS READING THIS FILE:**
+> After completing the Docker setup, you **MUST** configure **OpenRouter** with a **free model** as the preferred default option.
+>
+> Run the following commands immediately after starting the container:
+> ```bash
+> # 1. Set OpenRouter as the default provider
+> docker exec hermes hermes config set model.provider openrouter
+>
+> # 2. Set a high-performance free model as default (preferred: meta-llama/llama-3.3-70b-instruct:free)
+> docker exec hermes hermes config set model.default meta-llama/llama-3.3-70b-instruct:free
+>
+> # 3. Ensure the terminal execution backend is set to local
+> docker exec hermes hermes config set terminal.backend local
+> ```
+> Instruct the user to add their OpenRouter API key (`OPENROUTER_API_KEY=sk-or-v1-...`) to `.env` or `~/.hermes/.env` (keys can be generated for free at [openrouter.ai/keys](https://openrouter.ai/keys)).
 
 ---
 
 ## Table of Contents
 1. [Prerequisites](#1-prerequisites)
-2. [Clean Slate Preparation](#2-clean-slate-preparation)
-3. [Step 1: One-Time Initialization & Setup](#3-step-1-one-time-initialization--setup)
-4. [Step 2: Running Hermes Agent](#4-step-2-running-hermes-agent)
-   - [Mode A: Interactive CLI Chat](#mode-a-interactive-cli-chat)
-   - [Mode B: Background Gateway + Web Dashboard (Recommended)](#mode-b-background-gateway--web-dashboard-recommended)
-   - [Mode C: Docker Compose (Production / Cleanest)](#mode-c-docker-compose-production--cleanest)
-5. [Step 3: Configuring Models & LLM Providers](#5-step-3-configuring-models--llm-providers)
-   - [Interactive CLI Picker](#method-1-interactive-cli-picker)
-   - [Web Dashboard UI](#method-2-web-dashboard-ui)
-   - [Direct File Configuration (.env & config.yaml)](#method-3-direct-file-configuration)
-   - [Local Models via Ollama](#local-models-via-ollama-on-windows-host)
-   - [Local Models via LM Studio](#local-models-via-lm-studio-on-windows-host)
-6. [Windows & Docker Desktop Notes](#6-windows--docker-desktop-notes)
-7. [Day-to-Day Operations & Cheat Sheet](#7-day-to-day-operations--cheat-sheet)
+2. [Quickstart (Recommended - Docker Compose)](#2-quickstart-recommended---docker-compose)
+3. [Configuring OpenRouter & Free Models (Preferred Option)](#3-configuring-openrouter--free-models-preferred-option)
+4. [Interacting with Hermes from Terminal](#4-interacting-with-hermes-from-terminal)
+5. [Troubleshooting & Gotchas](#5-troubleshooting--gotchas)
+   - [Fix: `error: config.set model requires a live session`](#fix-error-configset-model-requires-a-live-session)
+   - [Fix: Terminal Backend (`local` vs `docker`)](#fix-terminal-backend-local-vs-docker)
+   - [Connecting to Local Host Services (Ollama / LM Studio)](#connecting-to-local-host-services-ollama--lm-studio)
+6. [Other LLM Providers (OpenAI, Anthropic, Ollama, LM Studio)](#6-other-llm-providers)
+7. [Email / Gmail Tool (`himalaya`) Setup](#7-email--gmail-tool-himalaya-setup)
+8. [Day-to-Day Operations & Cheat Sheet](#8-day-to-day-operations--cheat-sheet)
 
 ---
 
 ## 1. Prerequisites
 
-1. **Docker Desktop** installed and actively running on Windows.
-   - Verify in PowerShell:
-     ```powershell
-     docker --version
-     docker info
-     ```
-2. **Windows PowerShell** or **PowerShell 7+**.
+1. **Docker & Docker Compose** installed and running:
+   - **macOS / Linux**: Verify with `docker --version` and `docker compose version`.
+   - **Windows**: Docker Desktop actively running with WSL2 backend.
+2. Port availability: Ports `9119` (Web Dashboard) and `8642` (API Gateway) should be free.
 
 ---
 
-## 2. Clean Slate Preparation
+## 2. Quickstart (Recommended - Docker Compose)
 
-If you have any older or failed containers, stop and remove them:
-
-```powershell
-# Stop and remove any existing hermes container
-docker rm -f hermes
+### Step 1: Clone and Enter the Directory
+```bash
+git clone https://github.com/ShubhamBhavsar101/Hermes-Docker-Setup.git
+cd Hermes-Docker-Setup
 ```
 
-Create the host directory where all persistent agent data (API keys, memories, configs, and skills) will live:
-
-```powershell
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.hermes"
+### Step 2: Set Up Environment File
+Copy the example environment template:
+```bash
+cp .env.example .env
+```
+Open `.env` and add your OpenRouter API key (or other provider keys):
+```bash
+OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxx
 ```
 
-> [!NOTE]
-> The host directory (`$env:USERPROFILE\.hermes` $\rightarrow$ `C:\Users\<username>\.hermes`) maps directly to `/opt/data` inside the Docker container. This ensures your agent's memory, settings, and skills survive container restarts or image upgrades.
-
----
-
-## 3. Step 1: One-Time Initialization & Setup
-
-Run the interactive setup wizard to configure your initial model provider and API keys:
-
-```powershell
-docker run -it --rm `
-  -v ${env:USERPROFILE}\.hermes:/opt/data `
-  nousresearch/hermes-agent setup
-```
-
-Follow the interactive prompts to select your provider (OpenRouter, Anthropic, OpenAI, LM Studio, Ollama, etc.) and enter your API keys. When finished, your credentials are saved in `$env:USERPROFILE\.hermes\.env` and `config.yaml`.
-
----
-
-## 4. Step 2: Running Hermes Agent
-
-Choose one of three deployment modes in PowerShell:
-
----
-
-### Mode A: Interactive CLI Chat
-Run this when you want to chat directly with Hermes inside your PowerShell window:
-
-```powershell
-docker run -it --rm `
-  -v ${env:USERPROFILE}\.hermes:/opt/data `
-  nousresearch/hermes-agent
-```
-
----
-
-### Mode B: Background Gateway + Web Dashboard (Recommended)
-Runs Hermes persistently as a background service. It hosts the built-in Web Dashboard and manages messaging connections (Discord, Telegram, Slack, etc.):
-
-```powershell
-docker run -d `
-  --name hermes `
-  --restart unless-stopped `
-  -v ${env:USERPROFILE}\.hermes:/opt/data `
-  -p 8642:8642 `
-  -p 9119:9119 `
-  -e HERMES_DASHBOARD=1 `
-  -e HERMES_DASHBOARD_BASIC_AUTH_USERNAME=admin `
-  -e HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=SecretPass999 `
-  nousresearch/hermes-agent gateway run
-```
-
-#### Port Reference & Dashboard Login:
-- **Web Dashboard**: Open `http://localhost:9119` in your browser.
-  - **Username**: `admin`
-  - **Password**: `SecretPass999`
-- **API Server**: Port `8642` (OpenAI-compatible endpoints).
-
----
-
-### Mode C: Docker Compose (Production / Cleanest)
-
-Create a file named `docker-compose.yml` in your project folder:
-
-```yaml
-services:
-  hermes:
-    image: nousresearch/hermes-agent:latest
-    container_name: hermes
-    restart: unless-stopped
-    ports:
-      - "8642:8642"   # Gateway / API server
-      - "9119:9119"   # Built-in Web Dashboard
-    volumes:
-      - ${USERPROFILE}/.hermes:/opt/data
-    environment:
-      - HERMES_HOME=/opt/data
-      - HERMES_DASHBOARD=1
-      # Web Dashboard basic authentication credentials
-      - HERMES_DASHBOARD_BASIC_AUTH_USERNAME=admin
-      - HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=SecretPass999
-      # Optional: Uncomment to expose the OpenAI-compatible API server externally
-      # - API_SERVER_ENABLED=true
-      # - API_SERVER_HOST=0.0.0.0
-      # - API_SERVER_KEY=replace_with_secure_random_token_min_8_chars
-    command: gateway run
-```
-
-#### Starting & Managing with Compose in PowerShell:
-```powershell
-# Start container in background
+### Step 3: Launch Hermes Agent
+Start Hermes in the background with Docker Compose:
+```bash
 docker compose up -d
+```
 
-# Check live logs
-docker compose logs -f
+### Step 4: Verify Web Dashboard
+Open your browser to [http://localhost:9119](http://localhost:9119):
+- **Username**: `admin`
+- **Password**: `SecretPass999` *(or whatever you configured in `.env`)*
 
-# Stop container
-docker compose down
+---
+
+## 3. Configuring OpenRouter & Free Models (Preferred Option)
+
+OpenRouter provides free access to top-tier open models with zero upfront cost. 
+
+### Recommended Free Models Table
+
+| Model Identifier | Provider | Description |
+|---|---|---|
+| `meta-llama/llama-3.3-70b-instruct:free` | Meta | **(Recommended)** Top-tier 70B reasoning & coding |
+| `qwen/qwen-2.5-72b-instruct:free` | Alibaba Cloud | High-intelligence reasoning & multilingual |
+| `google/gemini-2.0-flash-exp:free` | Google | Extremely fast experimental multimodal model |
+| `deepseek/deepseek-r1:free` | DeepSeek | SOTA open reasoning model |
+| `mistralai/mistral-7b-instruct:free` | Mistral | Lightweight and fast |
+| `openrouter/auto` | OpenRouter | Auto-routes queries to optimal available model |
+
+### How to Set OpenRouter + Free Model
+
+#### Method A: Direct CLI One-Liner (Fastest & Recommended)
+```bash
+docker exec hermes hermes config set model.provider openrouter
+docker exec hermes hermes config set model.default meta-llama/llama-3.3-70b-instruct:free
+```
+
+#### Method B: Web Dashboard UI
+1. Go to [http://localhost:9119](http://localhost:9119) and log in.
+2. Click **Models** in the sidebar.
+3. Select **OpenRouter** as the provider, paste your API key, and choose `meta-llama/llama-3.3-70b-instruct:free`.
+
+#### Method C: Direct File Configuration
+Edit `~/.hermes/config.yaml` on your host machine:
+```yaml
+model:
+  provider: openrouter
+  default: meta-llama/llama-3.3-70b-instruct:free
+  base_url: https://openrouter.ai/api/v1
+  api_mode: chat_completions
+```
+Then restart the container:
+```bash
+docker compose restart
 ```
 
 ---
 
-## 5. Step 3: Configuring Models & LLM Providers
+## 4. Interacting with Hermes from Terminal
 
-You can switch models or add new providers at any time using any of these methods:
+### Interactive CLI Chat Session
+To chat directly with Hermes inside your terminal:
+```bash
+docker exec -it hermes hermes
+```
+Or launch the full-screen Terminal UI (TUI):
+```bash
+docker exec -it hermes hermes --tui
+```
 
-### Method 1: Interactive CLI Picker
-While the container is running, execute in PowerShell:
-```powershell
+### Interactive Model Picker
+To select or change models interactively from your terminal shell:
+```bash
 docker exec -it hermes hermes model
 ```
-This opens a menu in your terminal where you can select or switch your provider and model.
 
-### Method 2: Web Dashboard UI
-1. Navigate to `http://localhost:9119` in your browser and log in.
-2. Click on **Models** in the sidebar.
-3. Select your **Main Model** (for primary tasks and reasoning) and **Auxiliary Models** (for summarization, vision, or context compression).
+### Interactive Onboarding Wizard
+To run the full provider setup wizard:
+```bash
+docker exec -it hermes hermes setup
+```
 
-### Method 3: Direct File Configuration
-Because your `.hermes` folder is on your Windows machine at `C:\Users\<username>\.hermes`, you can open and edit the configuration directly.
+### Open Container Shell
+```bash
+docker exec -it hermes bash
+```
 
-1. **Add API keys in `.env`** (`$env:USERPROFILE\.hermes\.env`):
-   ```bash
-   OPENROUTER_API_KEY=sk-or-v1-xxxxxxxx
-   ANTHROPIC_API_KEY=sk-ant-xxxxxxxx
-   OPENAI_API_KEY=sk-proj-xxxxxxxx
-   DEEPSEEK_API_KEY=sk-xxxxxxxx
-   GROQ_API_KEY=gsk_xxxxxxxx
-   ```
+---
 
-2. **Configure the Model in `config.yaml`** (`$env:USERPROFILE\.hermes\config.yaml`):
-   ```yaml
-   model:
-     provider: openrouter   # or anthropic, openai, deepseek, groq
-     default: anthropic/claude-3.5-sonnet
-   ```
+## 5. Troubleshooting & Gotchas
 
-3. **Restart the container in PowerShell to apply changes**:
-   ```powershell
-   docker restart hermes
-   ```
+### Fix: `error: config.set model requires a live session`
+If you type `/model` in the chat UI or REPL and see:
+```
+· error: config.set model requires a live session; use Settings -> Models to change the profile default
+```
+**Why this happens**: Slash commands like `/model` inside the chat interface are **session-scoped** and only change the model for a live, existing conversation. If no conversation has started yet, Hermes rejects the command.
 
-### Local Models via Ollama (on Windows Host)
-If you run Ollama locally on Windows, the Docker container cannot access `localhost:11434`. Use `host.docker.internal` instead:
+**Solution**:
+1. To change the **global default model**, use either:
+   - Terminal: `docker exec hermes hermes config set model.default meta-llama/llama-3.3-70b-instruct:free`
+   - Or Web Dashboard: **Settings -> Models** or the **Models** sidebar tab.
+   - Or Host Shell: `docker exec -it hermes hermes model` (notice no leading slash `/`).
+2. If you want to use `/model` inside chat, **send a first message first** (e.g. `hello`) to create the session, then run `/model <model-name>`.
 
-In `config.yaml`:
+---
+
+### Fix: Terminal Backend (`local` vs `docker`)
+Because Hermes is already running isolated inside Docker, its execution backend must be `local` (not `docker`). Setting it to `docker` will fail with nested Docker daemon connection errors.
+```bash
+docker exec hermes hermes config set terminal.backend local
+```
+
+---
+
+### Connecting to Local Host Services (Ollama / LM Studio)
+Inside Docker containers, `localhost` refers to the container itself, **not** your host machine.
+- Always use `http://host.docker.internal:<port>/v1` instead of `localhost` or `127.0.0.1`.
+- **Ollama**: `http://host.docker.internal:11434/v1`
+- **LM Studio**: `http://host.docker.internal:1234/v1`
+
+---
+
+## 6. Other LLM Providers
+
+You can switch to commercial or local providers at any time:
+
+### Anthropic Claude
+```bash
+docker exec hermes hermes config set model.provider anthropic
+docker exec hermes hermes config set model.default anthropic/claude-3.5-sonnet
+```
+In `.env`: `ANTHROPIC_API_KEY=sk-ant-...`
+
+### OpenAI
+```bash
+docker exec hermes hermes config set model.provider openai
+docker exec hermes hermes config set model.default gpt-4o
+```
+In `.env`: `OPENAI_API_KEY=sk-proj-...`
+
+### Local Models via Ollama
+In `~/.hermes/config.yaml`:
 ```yaml
 model:
   provider: ollama
@@ -203,72 +216,28 @@ model:
   base_url: http://host.docker.internal:11434/v1
 ```
 
-### Local Models via LM Studio (on Windows Host)
-If you run LM Studio locally on Windows:
-1. In LM Studio, start the local server (default port `1234`).
-2. Make sure your model is loaded in memory.
-3. Because Hermes is in Docker, it must use `http://host.docker.internal:1234/v1` (NOT `127.0.0.1` or `localhost`).
-
-In `config.yaml`:
+### Local Models via LM Studio
+In `~/.hermes/config.yaml`:
 ```yaml
 model:
   provider: lmstudio
-  default: qwen2.5-coder-7b-instruct   # or your loaded model identifier
+  default: qwen2.5-coder-7b-instruct
   base_url: http://host.docker.internal:1234/v1
-  # context_length: 100000            # optional: Hermes auto-detects this dynamically from LM Studio
-```
-Or set it directly via CLI in PowerShell:
-```powershell
-docker exec -it hermes hermes config set model.base_url http://host.docker.internal:1234/v1
-docker restart hermes
 ```
 
 ---
 
-## 6. Windows & Docker Desktop Notes
+## 7. Email / Gmail Tool (`himalaya`) Setup
 
-### 💡 Path Syntax in PowerShell
-Always use the PowerShell environment variable `${env:USERPROFILE}` to refer to your user profile directory:
-```powershell
--v ${env:USERPROFILE}\.hermes:/opt/data
-```
-This guarantees that Docker receives clean Windows paths without shell path corruption.
-
-### 💡 Connecting to Local Host Services (`host.docker.internal`)
-Inside a Docker container, `localhost` or `127.0.0.1` refers to the container itself, **not** your Windows machine.
-- If you are running local servers on Windows (such as **LM Studio** on port `1234` or **Ollama** on port `11434`), you **must** use `http://host.docker.internal:<port>/v1`.
-- Using `127.0.0.1` or `localhost` from within the container will result in connection refused / network failure.
-
-### 💡 Terminal Backend: `local` vs `docker`
-Because Hermes is already running isolated inside a Docker container, you should ensure its terminal execution backend is set to `local` (not `docker`).
-- If set to `docker`, Hermes attempts to run nested Docker containers via `/var/run/docker.sock`, which fails with a Docker daemon connection error.
-- Setting it to `local` runs file operations and terminal commands safely directly inside the Hermes container:
-  ```powershell
-  docker exec -it hermes hermes config set terminal.backend local
-  docker restart hermes
-  ```
-
-### 💡 Web Dashboard Auth Requirement
-Hermes Agent enforces mandatory authentication whenever the dashboard binds to `0.0.0.0` (which is required for Docker port forwarding). Always provide both `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` and `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` when starting the container.
-
-### 💡 Email / Gmail Tool (`himalaya`) Setup & Path Mapping
 Hermes uses the `himalaya` CLI to read, search, and send emails via IMAP/SMTP.
 
-#### How Path Mapping Works
-Because the Docker container mounts `${env:USERPROFILE}\.hermes:/opt/data`, Hermes sets `HOME=/opt/data/home` for all skill subprocesses.
-* **Host (Windows) Path**: `C:\Users\<username>\.hermes\home\.config\himalaya\config.toml`
-* **Container Path**: `/opt/data/home/.config/himalaya/config.toml`
-
-Any tool looking in `~/.config/himalaya/config.toml` automatically reads directly from your Windows host folder.
-
-#### 1. Install & Symlink Himalaya in the Container
-Run this one-liner in PowerShell (installs Himalaya v1.2.0 and links paths for both `root` and `hermes` users):
-```powershell
+### 1. Install & Symlink Himalaya in Container
+```bash
 docker exec -u 0 hermes sh -c "curl -sSL https://github.com/pimalaya/himalaya/releases/download/v1.2.0/himalaya.x86_64-linux.tgz | tar -xz -C /usr/local/bin && mkdir -p /root/.config /home/hermes/.config && ln -sfn /opt/data/home/.config/himalaya /root/.config/himalaya && ln -sfn /opt/data/home/.config/himalaya /home/hermes/.config/himalaya"
 ```
 
-#### 2. Create the Gmail Configuration File
-Save the file at `$env:USERPROFILE\.hermes\home\.config\himalaya\config.toml`:
+### 2. Create the Gmail Configuration File
+Save the file on your host machine at `~/.hermes/home/.config/himalaya/config.toml`:
 ```toml
 [accounts.gmail]
 email = "your_email@gmail.com"
@@ -299,34 +268,20 @@ folder.aliases.trash = "[Gmail]/Trash"
 
 ---
 
-### 💡 Copying / Migrating `.hermes` to Another User or Machine
-Because all persistent state, sessions, memories, skills, and configuration files live exclusively inside the `.hermes` directory, you can easily copy it to set up another user:
+## 8. Day-to-Day Operations & Cheat Sheet
 
-1. **Copy the `.hermes` folder**:
-   ```powershell
-   # Copy from your profile to another user's profile
-   Copy-Item -Recurse "$env:USERPROFILE\.hermes" "C:\Users\<other-username>\.hermes"
-   ```
-2. **Update User-Specific Settings**:
-   - In `C:\Users\<other-username>\.hermes\home\.config\himalaya\config.toml`: Update the `email` and `auth.raw` App Password to the other user's credentials.
-   - In `C:\Users\<other-username>\.hermes\.env` or `config.yaml`: Update any user-specific keys (Telegram Bot token, chat IDs, etc.) if they should use separate accounts.
-3. **Launch the Container for the New User**:
-   Run the `docker run` command using their profile path.
-4. **Install Himalaya in their Container**:
-   Run the one-liner from step 1 above once to install the `himalaya` binary inside the new user's container.
+| Task | Command |
+|---|---|
+| **View Live Container Logs** | `docker compose logs -f` |
+| **Interactive Terminal Chat** | `docker exec -it hermes hermes` |
+| **Full Terminal UI (TUI)** | `docker exec -it hermes hermes --tui` |
+| **Interactive Model Picker** | `docker exec -it hermes hermes model` |
+| **Open Container Shell** | `docker exec -it hermes bash` |
+| **Check Gateway Status** | `docker exec hermes hermes gateway status` |
+| **Restart Hermes** | `docker compose restart` |
+| **Stop Hermes** | `docker compose down` |
+| **Upgrade to Latest Version** | `docker compose pull && docker compose up -d` |
+| **Backup State & Memories** | `cp -r ~/.hermes ~/.hermes-backup` *(Windows: `Copy-Item -Recurse "$env:USERPROFILE\.hermes" "$env:USERPROFILE\.hermes-backup"`)* |
 
 ---
-
-## 7. Day-to-Day Operations & Cheat Sheet
-
-Run these commands directly in **PowerShell**:
-
-| Task | PowerShell Command |
-|------|--------------------|
-| **View Live Container Logs** | `docker logs -f hermes` |
-| **Launch Hermes CLI inside Container** | `docker exec -it hermes hermes` |
-| **Open a Shell inside Container** | `docker exec -it hermes bash` |
-| **Check Gateway Status** | `docker exec hermes hermes gateway status` |
-| **Restart Gateway** | `docker restart hermes` |
-| **Upgrade to Latest Version** | `docker pull nousresearch/hermes-agent:latest; docker rm -f hermes` then re-run the `docker run` command |
-| **Backup Configuration & State** | `Copy-Item -Recurse "$env:USERPROFILE\.hermes" "$env:USERPROFILE\.hermes-backup"` |
+&copy; 2026 Hermes Agent Docker Setup. Maintained by Shubham Bhavsar.
