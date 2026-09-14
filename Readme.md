@@ -52,9 +52,30 @@ docker compose up -d
 | **Change Default Model** | `docker exec hermes hermes config set model.default <model-slug>` |
 | **Pick Model Interactively** | `docker exec -it hermes hermes model` |
 | **Reset Provider / Rate Limits**| `docker exec hermes hermes auth reset openrouter` |
+| **Reload .env / New API Key**| `docker compose up -d && docker exec hermes hermes auth reset openrouter` |
 | **View Live Logs** | `docker compose logs -f` |
 | **Restart Container** | `docker compose restart` |
 | **Stop Container** | `docker compose down` |
+
+---
+
+## 🔑 Updating API Keys (.env)
+
+When changing or adding API keys in [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env):
+
+1. **Update [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env)**:
+   ```bash
+   OPENROUTER_API_KEY=sk-or-v1-your-new-key
+   ```
+2. **Recreate the container**:
+   ```bash
+   docker compose up -d
+   ```
+   *(Note: `docker compose restart` does **not** reload `.env` variables; `docker compose up -d` recreates the container with the updated variables).*
+3. **Reset cached authentication status**:
+   ```bash
+   docker exec hermes hermes auth reset openrouter
+   ```
 
 ---
 
