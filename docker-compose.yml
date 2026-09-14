@@ -1,0 +1,24 @@
+services:
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes
+    restart: unless-stopped
+    ports:
+      - "8642:8642"   # Gateway / API server
+      - "9119:9119"   # Built-in Web Dashboard
+    volumes:
+      - ${HOME}/.hermes:/opt/data
+    environment:
+      - HERMES_HOME=/opt/data
+      - HERMES_DASHBOARD=1
+      # Web Dashboard basic authentication credentials
+      - HERMES_DASHBOARD_BASIC_AUTH_USERNAME=${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-admin}
+      - HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-SecretPass999}
+      # Optional: Uncomment to expose the OpenAI-compatible API server externally
+      # - API_SERVER_ENABLED=true
+      # - API_SERVER_HOST=0.0.0.0
+      # - API_SERVER_KEY=replace_with_secure_random_token_min_8_chars
+    env_file:
+      - path: .env
+        required: false
+    command: gateway run
