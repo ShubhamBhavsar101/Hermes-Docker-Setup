@@ -66,6 +66,8 @@ docker compose up -d
    Hermes runs inside Docker. Keep `terminal.backend` set to `local` (already default) to prevent nested Docker socket errors.
 3. **Connecting to Host Services (Ollama / LM Studio)**:
    Use `http://host.docker.internal:<port>/v1` instead of `localhost`.
+4. **Updating `.env` requires container recreation**:
+   `docker compose restart` does not re-read `.env`. Run `docker compose up -d` (or `--force-recreate`). If a failed key was previously used, also run `docker exec hermes hermes auth reset openrouter`.
 
 ---
 
