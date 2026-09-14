@@ -4,40 +4,60 @@ Guidelines and automated setup procedures for AI coding assistants working in th
 
 ---
 
-## 🤖 Post-Launch Container Configuration
+## 🛑 Step 1: Pre-Launch Environment Setup (Mandatory First Step)
 
-After launching the container with `docker compose up -d`, automatically configure **OpenRouter** with a **free model** as the preferred default option:
+**BEFORE running `docker compose up -d` or executing any container setup commands, the agent MUST:**
 
-```bash
-docker exec hermes hermes config set model.provider openrouter
-docker exec hermes hermes config set model.default openrouter/free
-docker exec hermes hermes config set terminal.backend local
-docker exec hermes hermes auth reset openrouter
-```
+1. **Verify `.env` Existence**:
+   - Check if [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env) exists.
+   - If [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env) does not exist, copy [.env.example](file:///Users/shubh/Github/Hermes-Docker-Setup/.env.example) to [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env) (`cp .env.example .env`).
+
+2. **Prompt the User for Environment Variables First**:
+   - **OpenRouter API Key (`OPENROUTER_API_KEY`)**: Ask the user to provide their OpenRouter API key (or confirm they have placed it in `.env`). **Do NOT** launch the container with placeholder (`sk-or-v1-xxxx...`) or empty keys, as this causes authentication failures and exhaustion locks.
+   - **Telegram Bot Configuration (Optional)**: Ask the user if they wish to configure Telegram now by adding `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_USERS` to `.env`.
+   - **Wait for confirmation**: Only proceed to Step 2 after the user confirms that the required environment variables are set.
+
+---
+
+## 🚀 Step 2: Container Launch & Automated Configuration
+
+Once `.env` has been configured with valid keys:
+
+1. **Launch the Container**:
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Configure OpenRouter Free Tier Model**:
+   Automatically run the following commands to configure Hermes:
+   ```bash
+   docker exec hermes hermes config set model.provider openrouter
+   docker exec hermes hermes config set model.default openrouter/free
+   docker exec hermes hermes config set terminal.backend local
+   docker exec hermes hermes auth reset openrouter
+   ```
 
 ---
 
 ## 🔑 Environment & Credential Guidelines
 
-1. **OpenRouter API Key**:
-   - Prompt the user to add their OpenRouter API key (`OPENROUTER_API_KEY`) to [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env).
-   - Whenever [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env) is modified, always reload the container using `docker compose up -d` (never `docker compose restart`, which does not re-read `.env`).
-   - If authentication failure occurred prior to key update, clear the exhaustion cache with:
+1. **Reloading `.env` Variables**:
+   - Whenever [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env) is modified, always reload the container using:
+     ```bash
+     docker compose up -d
+     ```
+   - **Never** use `docker compose restart`, which does not re-read `.env`.
+   - If an authentication failure occurred prior to key update, clear the exhaustion cache with:
      ```bash
      docker exec hermes hermes auth reset openrouter
      ```
 
 2. **Telegram & Messaging Setup**:
-   - Prompt the user if they wish to configure messaging platforms (Telegram, Discord, WhatsApp, etc.).
-   - Interactive wizard can be triggered with:
-     ```bash
-     docker exec -it hermes hermes gateway setup
-     ```
-   - If the wizard is used and prompts `Start manually: hermes gateway`, restart the container to resume the supervised gateway process:
+   - Prefer declarative configuration in [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env) using `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_USERS`.
+   - If the user prefers the interactive wizard (`docker exec -it hermes hermes gateway setup`), remind them that when it prompts `Start manually: hermes gateway`, they must restart the container using:
      ```bash
      docker compose restart
      ```
-   - Alternatively, encourage declarative configuration via [.env](file:///Users/shubh/Github/Hermes-Docker-Setup/.env) using `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_USERS`.
 
 ---
 
