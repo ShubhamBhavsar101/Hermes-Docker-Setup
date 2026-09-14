@@ -15,11 +15,14 @@ This guide walks you through setting up, configuring, and running **Nous Researc
 > # 1. Set OpenRouter as the default provider
 > docker exec hermes hermes config set model.provider openrouter
 >
-> # 2. Set a high-performance free model as default (preferred: meta-llama/llama-3.3-70b-instruct:free)
-> docker exec hermes hermes config set model.default meta-llama/llama-3.3-70b-instruct:free
+> # 2. Set the official OpenRouter free auto-router as default
+> docker exec hermes hermes config set model.default openrouter/free
 >
 > # 3. Ensure the terminal execution backend is set to local
 > docker exec hermes hermes config set terminal.backend local
+>
+> # 4. Reset provider status if needed
+> docker exec hermes hermes auth reset openrouter
 > ```
 > Instruct the user to add their OpenRouter API key (`OPENROUTER_API_KEY=sk-or-v1-...`) to `.env` or `~/.hermes/.env` (keys can be generated for free at [openrouter.ai/keys](https://openrouter.ai/keys)).
 
@@ -88,32 +91,31 @@ OpenRouter provides free access to top-tier open models with zero upfront cost.
 
 | Model Identifier | Provider | Description |
 |---|---|---|
-| `meta-llama/llama-3.3-70b-instruct:free` | Meta | **(Recommended)** Top-tier 70B reasoning & coding |
-| `qwen/qwen-2.5-72b-instruct:free` | Alibaba Cloud | High-intelligence reasoning & multilingual |
-| `google/gemini-2.0-flash-exp:free` | Google | Extremely fast experimental multimodal model |
-| `deepseek/deepseek-r1:free` | DeepSeek | SOTA open reasoning model |
-| `mistralai/mistral-7b-instruct:free` | Mistral | Lightweight and fast |
-| `openrouter/auto` | OpenRouter | Auto-routes queries to optimal available model |
+| `openrouter/free` | OpenRouter | **(Recommended)** Automatically routes to the best currently active free model |
+| `nvidia/nemotron-3.5-lightning:free` | NVIDIA | High-speed, high-accuracy reasoning |
+| `google/gemma-4-31b-it:free` | Google | Latest high-capability open Gemma model |
+| `nex-agi/nex-n2.5-pro:free` | Nex AGI | General reasoning and task execution |
+| `liquid/lfm-2.5-2.6b:free` | Liquid AI | Ultra-fast lightweight model |
 
 ### How to Set OpenRouter + Free Model
 
 #### Method A: Direct CLI One-Liner (Fastest & Recommended)
 ```bash
 docker exec hermes hermes config set model.provider openrouter
-docker exec hermes hermes config set model.default meta-llama/llama-3.3-70b-instruct:free
+docker exec hermes hermes config set model.default openrouter/free
 ```
 
 #### Method B: Web Dashboard UI
 1. Go to [http://localhost:9119](http://localhost:9119) and log in.
 2. Click **Models** in the sidebar.
-3. Select **OpenRouter** as the provider, paste your API key, and choose `meta-llama/llama-3.3-70b-instruct:free`.
+3. Select **OpenRouter** as the provider, paste your API key, and choose `openrouter/free`.
 
 #### Method C: Direct File Configuration
 Edit `~/.hermes/config.yaml` on your host machine:
 ```yaml
 model:
   provider: openrouter
-  default: meta-llama/llama-3.3-70b-instruct:free
+  default: openrouter/free
   base_url: https://openrouter.ai/api/v1
   api_mode: chat_completions
 ```
